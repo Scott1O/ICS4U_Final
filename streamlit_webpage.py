@@ -10,6 +10,7 @@ import calendar
 from data_functions import day_mean
 sns.set(color_codes = True)
 
+# using pandas to open the csv file
 weather = pd.read_csv("climate-daily.csv", low_memory = False)
 
 # next steps:
@@ -27,30 +28,36 @@ with st.sidebar:
         options = ["Home", "Today's Weather", "Interesting Graphs", "Extra", "Future Forecast"]
     )
 
-years = [year for year in range(1840, 2001)]
+# set up the available days and months that can be selected
 months = list(calendar.month_name[1:])
 days = [day for day in range(1,32)]
 
+# code for each navigation option
 if selected == "Today's Weather":
     st.header("Today's Historical Weather Report")
     current_date = datetime.today()
+    # display the current date and some basic info for that date
     st.subheader(f"Today is {calendar.month_name[current_date.month]} {current_date.day}, {current_date.year}")
     st.write(f"The average temperature for today is {round(day_mean(current_date.day, current_date.month, 'MEAN_TEMPERATURE'),1)} °C")
 
+    # specific date information gathering
     st.subheader("Enter the Date")
     with st.form("entry_form"):
+        # setting up the three column selection options for specific date information gathering
         info_type, day_select, month_select = st.columns(3)
         month_select.selectbox("Select Month:", months, key = "month")
         day_select.selectbox("Select Day:", days, key = "day")
         info_type.selectbox("Select Info:", ["MEAN_TEMPERATURE", "MAX_TEMPERATURE",
         "MIN_TEMPERATURE", "TOTAL_PRECIPITATION"], key = "header")
 
+        # button to submit choices and see results
         submitted = st.form_submit_button("Find Info:")
         if submitted: 
             # avg outputting
             used_day = st.session_state["day"]
             used_month = months.index(st.session_state["month"]) + 1
             used_header = str(st.session_state["header"])
+            # accounting for invalid dates (ex. feb 30)
             if math.isnan(day_mean(used_day, used_month, used_header)):
                 st.write("This is an invalid date")
             else:
@@ -58,10 +65,10 @@ if selected == "Today's Weather":
 
 
 elif selected == "Interesting Graphs":
-    # streamlit plotting setup
-    st.title("Average Monthly Max Temperature")
+    # graph title
+    st.subheader("Average Monthly Max Temperature")
 
-    # plotting
+    # plotting graph
     monthly_avg_temp = weather.groupby(["LOCAL_YEAR", "LOCAL_MONTH"])["MAX_TEMPERATURE"].mean().reset_index()
 
     avg_max_temp_month, ax = plt.subplots(figsize=(12, 6))
