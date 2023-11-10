@@ -6,8 +6,9 @@ from streamlit_option_menu import option_menu
 from datetime import datetime
 import math
 import calendar
+import io
 
-from data_functions import day_mean
+from data_functions import day_mean, convert_df
 sns.set(color_codes = True)
 
 # using pandas to open the csv file
@@ -33,7 +34,29 @@ months = list(calendar.month_name[1:])
 days = [day for day in range(1,32)]
 
 # code for each navigation option
-if selected == "Today's Weather":
+if selected == "Home":
+    # home page containing basic information about the csv file
+    st.header("climate-daily.csv File Information:")
+    # converting the weather dataframe into a downloadable csv and creating a download button
+    downloadable_csv = convert_df(weather)
+    st.download_button(label = "Download climate-daily.csv", data = downloadable_csv)
+    # creating two columns to have overview and null values appear side by side on the website
+    info_columns = st.columns(2)
+    info_columns[0].subheader("Dataframe Overview:")
+    info_columns[1].subheader("Sum of Null Columns:")
+    with info_columns[0]:
+        # creating an in-memory text buffer as df.info() is printed to sys.stdout and is
+        # harder to use that way
+        buffer = io.StringIO()
+        weather.info(buf=buffer)
+        weather_overview = buffer.getvalue()
+        # printing the overview of the weather dataframe given from weather.info()
+        st.text(weather_overview)
+    with info_columns[1]:
+        # printing the sum of null values for each column in the weather dataframe
+        st.text(weather.isnull().sum())
+
+elif selected == "Today's Weather":
     st.header("Today's Historical Weather Report")
     current_date = datetime.today()
     # display the current date and some basic info for that date

@@ -24,3 +24,15 @@ def day_mean(day, month, column):
     mean_value = df_oneday[column].mean()
 
     return mean_value
+
+@st.cache_data
+def convert_df(dataframe):
+    ''' converts a dataframe into a csv to be downloaded
+    
+    arguments:
+        dataframe: the dataframe to be converted into csv, dataframe
+
+    return:
+        the csv version of the dataframe
+    '''
+    return dataframe.to_csv().encode('utf-8')
