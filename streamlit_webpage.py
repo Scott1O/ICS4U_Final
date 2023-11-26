@@ -94,10 +94,10 @@ elif selected == "Daily Weather":
         # setting up the three column selection options for month information gathering
         info_type_month, month_select_month, output_type = st.columns(3)
         # creating a copy of months so I can include an "All Months" options
-        aug_months = months.copy()
-        aug_months.insert(0,"All Months")
+        all_months = months.copy()
+        all_months.insert(0,"All Months")
         # select boxes for month entry
-        month_select_month.selectbox("Select Month:", aug_months, index = current_date.month,
+        month_select_month.selectbox("Select Month:", all_months, index = current_date.month,
         key = "months_month")
         info_type_month.selectbox("Select Info:", ["MEAN_TEMPERATURE", "MAX_TEMPERATURE",
         "MIN_TEMPERATURE", "TOTAL_PRECIPITATION", "SNOW_ON_GROUND"], key = "months_info")
@@ -136,9 +136,6 @@ elif selected == "Daily Weather":
                 st.write("Invalid input. Please try again.")
 
 
-
-
-
 elif selected == "Interesting Graphs":
     # graph title
     st.subheader("Average Monthly Max Temperature")
@@ -153,3 +150,56 @@ elif selected == "Interesting Graphs":
     ax.set_ylabel('Average Temperature (°C)')
 
     st.pyplot(avg_max_temp_month)
+
+elif selected == "Future Forecast":
+    # Future forecast is still work in progress
+    # Steps for next week:
+    # Classify data into larger groups ex. Very Cold, Cold, Chilly, Warm, Hot for temperature
+    # Sort by these larger data groups and return a list of days that fit within requested parameters
+    # Make the website part of the future forecast fully functional (currently only works for 2 parameters)
+    st.header("Find a day that best fits your specifications")
+    # creating a pandas dataframe for the averages for each day
+    means_for_year = {}
+    for month in range(1, 13):
+        for day in range(1, 32):
+            temps_day = day_mean(day, month, "MEAN_TEMPERATURE")
+            rain_day = day_mean(day, month, "TOTAL_PRECIPITATION")
+            snow_day = day_mean(day, month, "SNOW_ON_GROUND")
+            if not math.isnan(temps_day):
+                means_for_year[f"{calendar.month_name[month]} {day}"] = {"MEAN_TEMPERATURE": temps_day, "TOTAL_PRECIPITATION": rain_day, "SNOW_ON_GROUND": snow_day}
+    means_for_year_pandas = pd.DataFrame(means_for_year).T
+
+    # user selection and outputting
+    num_parameters = st.number_input("Parameters", min_value = 1, max_value = 3, value = 1, step = 1)
+    parameter_list = ["MEAN_TEMPERATURE", "TOTAL_PRECIPITATION", "SNOW_ON_GROUND"]
+
+    with st.form("parameters_entry"):
+        grid = st.columns(2)
+    
+        def add_row(row):
+            with grid[0]:
+                st.selectbox("Parameter", parameter_list, key = f"parameter{row}")
+            with grid[1]:
+                st.selectbox("Max or Min", ["Max", "Min"], key = f"max_or_min{row}")
+                
+        
+        for i in range(1,num_parameters+1):
+            add_row(i)
+
+        parameters_submit = st.form_submit_button("Find Info:")
+        if parameters_submit:
+            st.text(st.session_state)
+            st.text(st.session_state['parameter1'])
+            if num_parameters == 2:
+                if st.session_state["parameter1"] == st.session_state["parameter2"]:
+                    st.write("Invalid input. Please try again")
+                else:
+                    parameter_sorted = means_for_year_pandas.sort_values(by = [st.session_state["parameter1"], st.session_state["parameter2"]],
+                    ascending = [(st.session_state["max_or_min1"] == "Min"), (st.session_state["max_or_min2"] == "Min")])
+                    st.text(f"{parameter_sorted.iloc[0]}")
+            # elif num_parameters == 3:
+            #     if st.session_state["parameter1"] == st.session_state["parameter2"] or
+            #         st.session_state["parameter1"] == st.session_state["parameter3"] or
+            #         st.session_state["parameter2"] == st.session_state["parameter3"]:
+            #         st.write("Invalid input. Please try again")
+            # else:
