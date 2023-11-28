@@ -81,3 +81,25 @@ def convert_df(dataframe):
         the csv version of the dataframe
     '''
     return dataframe.to_csv().encode('utf-8')
+
+def weather_probability(day, month, column):
+    ''' finds the probability that a certain weather condition will occur on a day (snow or rain)
+
+    arguments:
+        day: the numerical day to use, int
+        month: the numerical month to use, int
+        column: the column on the .csv to sort by (ex. 'TOTAL_RAIN'), string
+    
+    return:
+        the percentage probability that the weather condition occurs on that day
+    '''
+
+    df_oneday = weather.loc[(weather["LOCAL_MONTH"] == month) & (weather["LOCAL_DAY"] == day)]
+    total_days = 0
+    times_weather_occured = 0
+    for date in df_oneday[column]:
+        if date:
+            times_weather_occured += 1
+        total_days += 1
+
+    return round((times_weather_occured / total_days) * 100, 2)

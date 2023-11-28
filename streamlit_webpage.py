@@ -8,7 +8,7 @@ import math
 import calendar
 import io
 
-from data_functions import day_mean, convert_df, month_mean, month_mean_dict
+from data_functions import day_mean, convert_df, month_mean, month_mean_dict, weather_probability
 sns.set(color_codes = True)
 
 # using pandas to open the csv file
@@ -18,6 +18,7 @@ weather = pd.read_csv("climate-daily.csv", low_memory = False)
 # add short analysis bits for each graph
 # come up with new graphs
 # do a future forecast (likely just info on a specific date in the future)
+# IMPORTANT: Change TOTAL_PRECIPITATION to TOTAL_RAIN and SNOW_ON_GROUND to TOTAL_SNOW
 
 # page config
 st.set_page_config(page_title = "Historical Weather Network", layout = "wide")
