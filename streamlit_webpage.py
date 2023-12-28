@@ -74,7 +74,7 @@ elif selected == "Daily Weather":
         month_select_day.selectbox("Select Month:", months, index = current_date.month - 1, key = "days_month")
         day_select.selectbox("Select Day:", days, index = current_date.day - 1, key = "day")
         info_type_day.selectbox("Select Info:", ["MEAN_TEMPERATURE", "MAX_TEMPERATURE",
-        "MIN_TEMPERATURE", "TOTAL_PRECIPITATION", "SNOW_ON_GROUND"], key = "days_header")
+        "MIN_TEMPERATURE", "TOTAL_RAIN", "SNOW_ON_GROUND"], key = "days_header")
 
         # button to submit choices and see results
         day_submit = st.form_submit_button("Find Info:")
@@ -101,7 +101,7 @@ elif selected == "Daily Weather":
         month_select_month.selectbox("Select Month:", all_months, index = current_date.month,
         key = "months_month")
         info_type_month.selectbox("Select Info:", ["MEAN_TEMPERATURE", "MAX_TEMPERATURE",
-        "MIN_TEMPERATURE", "TOTAL_PRECIPITATION", "SNOW_ON_GROUND"], key = "months_info")
+        "MIN_TEMPERATURE", "TOTAL_RAIN", "SNOW_ON_GROUND"], key = "months_info")
         output_type.selectbox("Output Type (Only for 'All Months'):", ["None", "Dict", "Max", "Min"], key = "output_type")
 
         # submit box for month entry
@@ -160,47 +160,31 @@ elif selected == "Future Forecast":
     # Make the website part of the future forecast fully functional (currently only works for 2 parameters)
     st.header("Find a day that best fits your specifications")
     # creating a pandas dataframe for the averages for each day
-    means_for_year = {}
+    mean_for_year = {}
+    months = list(calendar.month_name[1:])
     for month in range(1, 13):
         for day in range(1, 32):
             temps_day = day_mean(day, month, "MEAN_TEMPERATURE")
-            rain_day = day_mean(day, month, "TOTAL_PRECIPITATION")
-            snow_day = day_mean(day, month, "SNOW_ON_GROUND")
+            rain_day = day_mean(day, month, "TOTAL_RAIN")
+            rain_probability = weather_probability(day, month, "TOTAL_RAIN")
+            snow_day = day_mean(day, month, "TOTAL_SNOW")
+            snow_probability = weather_probability(day, month, "TOTAL_SNOW")
+            snow_ground_day = day_mean(day, month, "SNOW_ON_GROUND")
+            snow_ground_probability = weather_probability(day, month, "SNOW_ON_GROUND")
             if not math.isnan(temps_day):
-                means_for_year[f"{calendar.month_name[month]} {day}"] = {"MEAN_TEMPERATURE": temps_day, "TOTAL_PRECIPITATION": rain_day, "SNOW_ON_GROUND": snow_day}
-    means_for_year_pandas = pd.DataFrame(means_for_year).T
+                temp_class = (temps_day // 5) + 2
+                rain_class = rain_probability // 15
+                snow_class = snow_probability // 15
+                snow_ground_class = snow_ground_day // 2.5
+                mean_for_year[f"{calendar.month_name[month]} {day}"] = {"MEAN_TEMPERATURE": temps_day, "TOTAL_RAIN": rain_day, "TOTAL_SNOW": snow_day, "SNOW_ON_GROUND": snow_ground_day, "Snow on Ground Probability %": snow_ground_probability, "Temperature Rating": temp_class, "Rain Probability %": rain_probability, "Rain Rating": rain_class, "Snow Probability %": snow_probability, "Snow Rating": snow_class}
+    means_for_year_pandas = pd.DataFrame(mean_for_year).T
 
-    # user selection and outputting
-    num_parameters = st.number_input("Parameters", min_value = 1, max_value = 3, value = 1, step = 1)
-    parameter_list = ["MEAN_TEMPERATURE", "TOTAL_PRECIPITATION", "SNOW_ON_GROUND"]
+    ascending = []
+    sort_columns = st.multiselect('Select columns to sort by:', means_for_year_pandas.columns[1:])
+    for parameters in range(1, len(sort_columns)+1):
+        st.radio(f"Parameter {parameters}:", ["max", "min"], key=f"parameter{parameters}")
+        ascending.append(st.session_state[f"parameter{parameters}"] == "min")
 
-    with st.form("parameters_entry"):
-        grid = st.columns(2)
+    df_sorted = means_for_year_pandas.sort_values(by=sort_columns, ascending=ascending)
+    st.dataframe(df_sorted.head(20))
     
-        def add_row(row):
-            with grid[0]:
-                st.selectbox("Parameter", parameter_list, key = f"parameter{row}")
-            with grid[1]:
-                st.selectbox("Max or Min", ["Max", "Min"], key = f"max_or_min{row}")
-                
-        
-        for i in range(1,num_parameters+1):
-            add_row(i)
-
-        parameters_submit = st.form_submit_button("Find Info:")
-        if parameters_submit:
-            st.text(st.session_state)
-            st.text(st.session_state['parameter1'])
-            if num_parameters == 2:
-                if st.session_state["parameter1"] == st.session_state["parameter2"]:
-                    st.write("Invalid input. Please try again")
-                else:
-                    parameter_sorted = means_for_year_pandas.sort_values(by = [st.session_state["parameter1"], st.session_state["parameter2"]],
-                    ascending = [(st.session_state["max_or_min1"] == "Min"), (st.session_state["max_or_min2"] == "Min")])
-                    st.text(f"{parameter_sorted.iloc[0]}")
-            # elif num_parameters == 3:
-            #     if st.session_state["parameter1"] == st.session_state["parameter2"] or
-            #         st.session_state["parameter1"] == st.session_state["parameter3"] or
-            #         st.session_state["parameter2"] == st.session_state["parameter3"]:
-            #         st.write("Invalid input. Please try again")
-            # else:

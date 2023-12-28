@@ -6,6 +6,7 @@ import numpy as np
 from streamlit_option_menu import option_menu
 from datetime import datetime
 import calendar
+import math
 weather = pd.read_csv("climate-daily.csv", low_memory = False)
 
 def day_mean(day, month, column, rounded = True):
@@ -98,8 +99,13 @@ def weather_probability(day, month, column):
     total_days = 0
     times_weather_occured = 0
     for date in df_oneday[column]:
-        if date:
+        if math.isnan(date):
+            continue
+        elif date:
             times_weather_occured += 1
         total_days += 1
+
+    if not total_days:
+        total_days = 1
 
     return round((times_weather_occured / total_days) * 100, 2)
