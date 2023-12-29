@@ -19,6 +19,8 @@ def day_mean(day, month, column, rounded = True):
             column: the column on the .csv to sort by (ex. 'MEAN_TEMPERATURE'), string
             rounded: an optional argument to round the averages to two decimal points
                 set to true by default, boolean
+            probability: an optional argument to find the probability for month which is 
+                    set to false by default, boolean
         
         return:
             the numerical mean on that column and day
@@ -30,7 +32,7 @@ def day_mean(day, month, column, rounded = True):
     if rounded:
         return round(mean_value, 2)
 
-def month_mean(month, column, rounded = True):
+def month_mean(month, column, rounded = True, probability = False):
     ''' find the value of a column for a daily average of a full month
     ex. average amount of daily snow in December
 
@@ -39,20 +41,37 @@ def month_mean(month, column, rounded = True):
         column: the column on the .csv to sort by (ex. 'SNOW_ON_GROUND), string
         rounded: an optional argument to round the averages to two decimal points
                 set to true by default, boolean
+        probability: an optional argument to find the probability for month which is 
+                    set to false by default, boolean
 
     return:
         the daily average of the column value for that month
     '''
 
     df_onemonth = weather.loc[(weather["LOCAL_MONTH"] == month)]
-    mean_value = df_onemonth[column].mean()
+    if probability:
+        total_days = 0
+        times_weather_occured = 0
+        for datapoint in df_onemonth[column]:
+            if math.isnan(datapoint):
+                continue
+            elif datapoint:
+                times_weather_occured += 1
+            total_days += 1
+
+        if not total_days:
+            total_days = 1
+
+        mean_value = (times_weather_occured / total_days) * 100
+    else:
+        mean_value = df_onemonth[column].mean()
 
     if round:
         return round(mean_value, 2)
     else:
         return mean_value
 
-def month_mean_dict(column, month_num = True):
+def month_mean_dict(column, month_num = True, probability = False):
     ''' creates a dictionary for the means of each month, sorting for a column
 
     argument:
@@ -65,9 +84,9 @@ def month_mean_dict(column, month_num = True):
     '''
 
     if month_num == True:
-        month_means = {month : month_mean(month, column) for month in range(1,13)}
+        month_means = {month : month_mean(month, column, probability = probability) for month in range(1,13)}
     else:
-        month_means = {calendar.month_name[month] : month_mean(month, column) for month in range(1,13)}
+        month_means = {calendar.month_name[month] : month_mean(month, column, probability = probability) for month in range(1,13)}
 
     return month_means
 
