@@ -16,9 +16,6 @@ weather = pd.read_csv("climate-daily.csv", low_memory = False)
 
 # next steps:
 # add short analysis bits for each graph
-# come up with new graphs
-# do a future forecast (likely just info on a specific date in the future)
-# IMPORTANT: Change TOTAL_PRECIPITATION to TOTAL_RAIN and SNOW_ON_GROUND to TOTAL_SNOW
 
 # page config
 st.set_page_config(page_title = "Historical Weather Network", layout = "wide")
@@ -27,12 +24,42 @@ st.set_page_config(page_title = "Historical Weather Network", layout = "wide")
 with st.sidebar:
     selected = option_menu(
         menu_title = "Navigation",
-        options = ["Home", "Daily Weather", "Interesting Graphs", "Extra", "Future Forecast"]
+        options = ["Home", "Daily Weather", "Interesting Graphs", "Future Forecast"]
     )
 
 # set up the available days and months that can be selected
 months = list(calendar.month_name[1:])
 days = [day for day in range(1,32)]
+
+# creating a pandas dataframe for the averages for each day (setting up here for use in Future Forecast)
+# by doing it here it should prevent it from rerunning and recreating the dataframe
+# every time Future Forecast is selected
+mean_for_year = {}
+months = list(calendar.month_name[1:])
+for month in range(1, 13):
+    for day in range(1, 32):
+        temps_day = day_mean(day, month, "MEAN_TEMPERATURE")
+        rain_probability = weather_probability(day, month, "TOTAL_RAIN")
+        snow_probability = weather_probability(day, month, "TOTAL_SNOW")
+        snow_ground_day = day_mean(day, month, "SNOW_ON_GROUND")
+        snow_ground_probability = weather_probability(day, month, "SNOW_ON_GROUND")
+        if not math.isnan(temps_day):
+            # calculating the rating for each value in the averages dataframe
+            temp_class = (temps_day // 5) + 2
+            rain_class = rain_probability // 15
+
+            # for both snow_probability and snow_ground_probability there is a specific rating for 0% as its own rating
+            if not snow_probability:
+                snow_class = 0
+            else:
+                snow_class = (snow_probability // 10) + 1
+            
+            if not snow_ground_probability:
+                snow_ground_class = 0
+            else:
+                snow_ground_class = (snow_ground_probability // 20) + 1
+            mean_for_year[f"{calendar.month_name[month]} {day}"] = {"MEAN_TEMPERATURE": temps_day, "Temperature Rating": temp_class, "Rain Probability %": rain_probability, "Rain Rating": rain_class, "Snow Probability %": snow_probability, "Snow Rating": snow_class, "SNOW_ON_GROUND": snow_ground_day, "Snow on Ground Probability %": snow_ground_probability, "Snow on Ground Rating": snow_ground_class}
+means_for_year_pandas = pd.DataFrame(mean_for_year).T
 
 # code for each navigation option
 if selected == "Home":
@@ -65,7 +92,13 @@ elif selected == "Daily Weather":
     current_date = datetime.today()
     # display the current date and some basic info for that date
     st.subheader(f"Today is {calendar.month_name[current_date.month]} {current_date.day}, {current_date.year}")
-    st.write(f"The average temperature for today is {round(day_mean(current_date.day, current_date.month, 'MEAN_TEMPERATURE'),1)} °C")
+    st.write(f"The average temperature for today is {round(day_mean(current_date.day, current_date.month, 'MEAN_TEMPERATURE'), 1)} °C")
+    st.write(f"You can expect a high temperature of {round(day_mean(current_date.day, current_date.month, 'MAX_TEMPERATURE'), 1)} °C "
+    f"and a low temperature of {round(day_mean(current_date.day, current_date.month, 'MIN_TEMPERATURE'), 1)} °C")
+    st.write(f"There is a {weather_probability(current_date.day, current_date.month, 'TOTAL_RAIN')}% of rain today " 
+    f"and a {weather_probability(current_date.day, current_date.month, 'TOTAL_SNOW')}% chance of snow")
+    st.write(f"This may or not be obvious depending on the season but there is also a " 
+    f"{weather_probability(current_date.day, current_date.month, 'SNOW_ON_GROUND')}% chance of there being snow on the ground.")
 
     st.write()
 
@@ -161,26 +194,91 @@ elif selected == "Daily Weather":
 
 
 elif selected == "Interesting Graphs":
+    st.header("Interesting Graphs")
+
     # graph title
-    st.subheader("Average Monthly Max Temperature")
+    st.subheader("Average Monthly Mean Temperature")
+    st.write("add analysis")
 
     # plotting graph
-    monthly_avg_temp = weather.groupby(["LOCAL_YEAR", "LOCAL_MONTH"])["MAX_TEMPERATURE"].mean().reset_index()
+    monthly_avg_temp = weather.groupby(["LOCAL_YEAR", "LOCAL_MONTH"])["MEAN_TEMPERATURE"].mean().reset_index()
 
     avg_max_temp_month, ax = plt.subplots(figsize=(12, 6))
-    sns.lineplot(data=monthly_avg_temp, x='LOCAL_MONTH', y='MAX_TEMPERATURE', hue="LOCAL_YEAR", palette='coolwarm', ax=ax)
-    ax.set_title('Average Monthly Max Temperature')
+    sns.lineplot(data=monthly_avg_temp, x='LOCAL_MONTH', y='MEAN_TEMPERATURE', hue="LOCAL_YEAR", palette='coolwarm', ax=ax)
+    ax.set_title('Average Monthly Mean Temperature')
     ax.set_xlabel('Month')
     ax.set_ylabel('Average Temperature (°C)')
 
     st.pyplot(avg_max_temp_month)
+    
+    # probability of weather type for each month
+    st.subheader("Weather over a Month")
+    weather_graph_month = st.selectbox('Select a Month:', list(calendar.month_name)[1:], key = "month_graph_month")
+    month_graph_type = st.selectbox('Select a Weather Type:', means_for_year_pandas.columns, key = "month_graph_type")
+    # Create a function to calculate the probability of rain for each day in a month
+    # Filter the data to only include the selected month
+    df_monthly_filtered = means_for_year_pandas[means_for_year_pandas.index.str.startswith(st.session_state["month_graph_month"])]
+    weather_probability_graph_month, ax = plt.subplots(figsize=(16,4))
+    # Create a line plot of the probability of rain for each day in the selected month
+    sns.barplot(data=df_monthly_filtered, x=df_monthly_filtered.index.str.split().str[1], y=st.session_state["month_graph_type"], hue=df_monthly_filtered.index.str.split().str[1], palette='viridis')
+    ax.set_xlabel('Day of the Month')
+    ax.set_ylabel(f'{st.session_state["month_graph_type"]}')
+    ax.set_title(f'{st.session_state["month_graph_type"]} for Each Day in {st.session_state["month_graph_month"]}')
+
+    # Display the plot
+    st.pyplot(weather_probability_graph_month)
+
+    # frequency of different temperature values
+    st.subheader("Frequency of Temperature Values (Mean, Max, Min)")
+    st.write('add analysis')
+    temperature_graphs = st.columns(3)
+    st.slider("Select the Number of Bins", min_value = 5, max_value = 100, value = 20, step = 1, key = "num_bins_slider")
+    with temperature_graphs[0]:
+        temperature_freq_graph_mean, ax = plt.subplots(figsize=(12,6))
+        sns.histplot(weather['MEAN_TEMPERATURE'], bins=st.session_state["num_bins_slider"], kde=True, color='gray')
+        ax.set_title('Temperature Distribution (Mean)')
+        ax.set_xlabel('MEAN_TEMPERATURE')
+        ax.set_ylabel('Frequency')
+        st.pyplot(temperature_freq_graph_mean)
+    with temperature_graphs[1]:
+        temperature_freq_graph_max, ax = plt.subplots(figsize=(12,6))
+        sns.histplot(weather['MAX_TEMPERATURE'], bins=st.session_state["num_bins_slider"], kde=True, color='salmon')
+        ax.set_title('Temperature Distribution (Max)')
+        ax.set_xlabel('MAX_TEMPERATURE')
+        ax.set_ylabel('Frequency')
+        st.pyplot(temperature_freq_graph_max)
+    with temperature_graphs[2]:
+        temperature_freq_graph_min, ax = plt.subplots(figsize=(12,6))
+        sns.histplot(weather['MIN_TEMPERATURE'], bins=st.session_state["num_bins_slider"], kde=True, color='steelblue')
+        ax.set_title('Temperature Distribution (Min)')
+        ax.set_xlabel('MIN_TEMPERATURE')
+        ax.set_ylabel('Frequency')
+        st.pyplot(temperature_freq_graph_min)
+
+    #probability of weather type throughout entire year
+    st.subheader("Weather Over the Year")
+    weather_graph_year = st.selectbox('Select a Weather Type:', means_for_year_pandas.columns, key = "year_graph_type")
+    # Create a new column 'Day' for day
+    means_for_year_pandas['Day'] = means_for_year_pandas.index.str.split().str[1]
+
+    # Create a new column 'Month' for month
+    means_for_year_pandas['Month'] = means_for_year_pandas.index.str.split().str[0]
+
+    # Plotting
+    weather_probability_graph_year, ax = plt.subplots(figsize=(16,4))
+    sns.barplot(data=means_for_year_pandas, x='Month', y=st.session_state["year_graph_type"], hue='Month', palette='viridis')
+
+    # Formatting x-axis labels
+    ax.set_xticks(range(len(months)))  # Set x-ticks for each month
+    ax.set_xticklabels(months)  # Set x-tick labels as month names
+
+    ax.set_xlabel('Month of the Year')
+    ax.set_ylabel(f'{st.session_state["year_graph_type"]}')
+    ax.set_title("Weather Over the Year")
+
+    st.pyplot(weather_probability_graph_year)
 
 elif selected == "Future Forecast":
-    # Future forecast is still work in progress
-    # Steps for next week:
-    # Classify data into larger groups ex. Very Cold, Cold, Chilly, Warm, Hot for temperature
-    # Sort by these larger data groups and return a list of days that fit within requested parameters
-    # Make the website part of the future forecast fully functional (currently only works for 2 parameters)
     st.header("Find a day that best fits your specifications")
     # explaining the rating system at the top of the page using four columns
     st.subheader("Rating System Key")
@@ -219,33 +317,7 @@ elif selected == "Future Forecast":
         st.write("4 - Lots of Snow on Ground")
         st.write("5 - Skiing Days")
     
-    # creating a pandas dataframe for the averages for each day
-    mean_for_year = {}
-    months = list(calendar.month_name[1:])
-    for month in range(1, 13):
-        for day in range(1, 32):
-            temps_day = day_mean(day, month, "MEAN_TEMPERATURE")
-            rain_probability = weather_probability(day, month, "TOTAL_RAIN")
-            snow_probability = weather_probability(day, month, "TOTAL_SNOW")
-            snow_ground_day = day_mean(day, month, "SNOW_ON_GROUND")
-            snow_ground_probability = weather_probability(day, month, "SNOW_ON_GROUND")
-            if not math.isnan(temps_day):
-                # calculating the rating for each value in the averages dataframe
-                temp_class = (temps_day // 5) + 2
-                rain_class = rain_probability // 15
-
-                # for both snow_probability and snow_ground_probability there is a specific rating for 0% as its own rating
-                if not snow_probability:
-                    snow_class = 0
-                else:
-                    snow_class = (snow_probability // 10) + 1
-                
-                if not snow_ground_probability:
-                    snow_ground_class = 0
-                else:
-                    snow_ground_class = (snow_ground_probability // 20) + 1
-                mean_for_year[f"{calendar.month_name[month]} {day}"] = {"MEAN_TEMPERATURE": temps_day, "Temperature Rating": temp_class, "Rain Probability %": rain_probability, "Rain Rating": rain_class, "Snow Probability %": snow_probability, "Snow Rating": snow_class, "SNOW_ON_GROUND": snow_ground_day, "Snow on Ground Probability %": snow_ground_probability, "Snow on Ground Rating": snow_ground_class}
-    means_for_year_pandas = pd.DataFrame(mean_for_year).T
+    # using the means_for_year_pandas dataframe from the start of the code for this section
 
     # create a list called ascending to use in the sorting function
     ascending = []
