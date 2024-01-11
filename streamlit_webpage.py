@@ -14,9 +14,6 @@ sns.set(color_codes = True)
 # using pandas to open the csv file
 weather = pd.read_csv("climate-daily.csv", low_memory = False)
 
-# next steps:
-# add short analysis bits for each graph
-
 # page config
 st.set_page_config(page_title = "Historical Weather Network", layout = "wide")
 
@@ -38,6 +35,7 @@ mean_for_year = {}
 months = list(calendar.month_name[1:])
 for month in range(1, 13):
     for day in range(1, 32):
+        # assigning variables for each piece of data that needs to go into the new dataframe
         temps_day = day_mean(day, month, "MEAN_TEMPERATURE")
         rain_probability = weather_probability(day, month, "TOTAL_RAIN")
         snow_probability = weather_probability(day, month, "TOTAL_SNOW")
@@ -136,11 +134,12 @@ elif selected == "Daily Weather":
     f"{weather_probability(current_date.day, current_date.month, 'SNOW_ON_GROUND')}% chance of there being snow on the ground.")
 
     st.write()
+    st.write("NOTE: Submitting with a blank box will default to \"MEAN_TEMPERATURE\" for info type and the current date (month or day).")
 
     # specific date information gathering
     st.subheader("Enter a specific date and column to get a historical average")
     with st.form("day_entry"):
-        # setting up the three column selection options for specific date information gathering
+        # setting up the three selection options for specific date information gathering
         info_type_day, day_select, month_select_day = st.columns(3)
         month_select_day.selectbox("Select Month:", months, index = current_date.month - 1, key = "days_month")
         day_select.selectbox("Select Day:", days, index = current_date.day - 1, key = "day")
@@ -151,7 +150,7 @@ elif selected == "Daily Weather":
         # button to submit choices and see results
         day_submit = st.form_submit_button("Find Info:")
         if day_submit: 
-            # avg outputting
+            # average outputting
             used_day = st.session_state["day"]
             used_month = months.index(st.session_state["days_month"]) + 1
             # option to use probability instead of average values
@@ -159,7 +158,7 @@ elif selected == "Daily Weather":
                 # string slicing to cut out the (Probability) part
                 used_days_header = st.session_state["days_header"][:-14]
                 # accounting for invalid dates (ex. feb 30)
-                if math.isnan(weather_probability(used_day, used_month, used_days_header)):
+                if math.isnan(day_mean(used_day, used_month, used_days_header)):
                     st.write("This is an invalid date")
                 else:
                     st.write(f"{weather_probability(used_day, used_month, used_days_header)}%")
@@ -169,6 +168,7 @@ elif selected == "Daily Weather":
                 if math.isnan(day_mean(used_day, used_month, used_days_header)):
                     st.write("This is an invalid date")
                 else:
+                    # setting a tail string to add on to the end of the returned data
                     unit_tail = ""
                     if "TEMPERATURE" in st.session_state["days_header"]:
                         day_unit_tail = "°C"
@@ -205,11 +205,13 @@ elif selected == "Daily Weather":
         if month_submit:
             month_unit_tail = ""
             if "Probability" in st.session_state["months_info"]:
+                # string slicing to cut out the (Probability) part
                 month_info_type = st.session_state["months_info"][:-14]
                 probability_calc = True
                 month_unit_tail = "%"
             else:
                 month_info_type = st.session_state["months_info"]
+                # setting a tail string to add on to the end of the returned data
                 if "TEMPERATURE" in month_info_type:
                         month_unit_tail = " °C"
                 elif "SNOW" in month_info_type:
@@ -217,13 +219,16 @@ elif selected == "Daily Weather":
                 elif "RAIN" in month_info_type:
                     month_unit_tail = " mm"
                 probability_calc = False
-
+            
+            # accounting for invalid inputs (can't output a min or max for just one month)
             if st.session_state["output_type"] != "None" and st.session_state["months_month"] == "All Months":
+                # setting up each option for the output type
                 if st.session_state["output_type"] == "Dict":
                     for key, value in month_mean_dict(month_info_type, month_num = False, probability = probability_calc).items():
                         st.write(f"{key} : {value}{month_unit_tail}")
 
                 elif st.session_state["output_type"] == "Max":
+                    # -999 is a safe min value to use as there is no number lower than it and it is easier to spot an issue if the loop is not working
                     max_value = -999
                     max_key = ""
                     for key, value in month_mean_dict(month_info_type, month_num = False, probability = probability_calc).items():
@@ -233,6 +238,7 @@ elif selected == "Daily Weather":
                     st.write(f"{max_key} : {max_value}{month_unit_tail}")
 
                 elif st.session_state["output_type"] == "Min":
+                    # using 999 for the same reasoning as -999
                     max_value = 999
                     max_key = ""
                     for key, value in month_mean_dict(month_info_type, month_num = False, probability = probability_calc).items():
@@ -345,19 +351,18 @@ elif selected == "Interesting Graphs":
     
     # probability of weather type for each month
     st.subheader("Weather over a Month")
+    # creating select boxes for the user
     weather_graph_month = st.selectbox('Select a Month:', list(calendar.month_name)[1:], key = "month_graph_month")
     month_graph_type = st.selectbox('Select a Weather Type:', means_for_year_pandas.columns, key = "month_graph_type")
-    # Create a function to calculate the probability of rain for each day in a month
-    # Filter the data to only include the selected month
+    # filtering the data for one month
     df_monthly_filtered = means_for_year_pandas[means_for_year_pandas.index.str.startswith(st.session_state["month_graph_month"])]
     weather_probability_graph_month, ax = plt.subplots(figsize=(16,4))
-    # Create a line plot of the probability of rain for each day in the selected month
+    # making a line plot for the selected info type
     sns.barplot(data=df_monthly_filtered, x=df_monthly_filtered.index.str.split().str[1], y=st.session_state["month_graph_type"], hue=df_monthly_filtered.index.str.split().str[1], palette='viridis')
     ax.set_xlabel('Day of the Month')
     ax.set_ylabel(f'{st.session_state["month_graph_type"]}')
     ax.set_title(f'{st.session_state["month_graph_type"]} for Each Day in {st.session_state["month_graph_month"]}')
 
-    # Display the plot
     st.pyplot(weather_probability_graph_month)
 
     # frequency of different temperature values
@@ -367,9 +372,12 @@ elif selected == "Interesting Graphs":
     st.write("What's interesting about these histograms is how the peaks seem to be around 0 or 20 °C for all three types of temperature graphs. This is likely "
     "related to Canada's wide range of seasons and temperatures. The graphs indicate that in general, Canadian weather is either chilly or warm and does not see "
     "that many days that are simply \'cool\' in the mid-range of temperatures.")
+    # using st.columns to have all 3 graphs side by side for comparison
+    # set their x and y limits to be the same for proper visual comparison
     temperature_graphs = st.columns(3)
     st.slider("Select the Number of Bins", min_value = 5, max_value = 100, value = 20, step = 1, key = "num_bins_slider")
     with temperature_graphs[0]:
+        # MEAN_TEMPERATURE histplot
         temperature_freq_graph_mean, ax = plt.subplots(figsize=(12,6))
         sns.histplot(weather['MEAN_TEMPERATURE'], bins=st.session_state["num_bins_slider"], kde=True, color='gray')
         ax.set_title('Temperature Distribution (Mean)')
@@ -379,6 +387,7 @@ elif selected == "Interesting Graphs":
         ax.set_xlim(-30,40)
         st.pyplot(temperature_freq_graph_mean)
     with temperature_graphs[1]:
+        # MAX_TEMPERATURE histplot
         temperature_freq_graph_max, ax = plt.subplots(figsize=(12,6))
         sns.histplot(weather['MAX_TEMPERATURE'], bins=st.session_state["num_bins_slider"], kde=True, color='salmon')
         ax.set_title('Temperature Distribution (Max)')
@@ -388,6 +397,7 @@ elif selected == "Interesting Graphs":
         ax.set_xlim(-30,40)
         st.pyplot(temperature_freq_graph_max)
     with temperature_graphs[2]:
+        # MIN_TEMPERATURE histplot
         temperature_freq_graph_min, ax = plt.subplots(figsize=(12,6))
         sns.histplot(weather['MIN_TEMPERATURE'], bins=st.session_state["num_bins_slider"], kde=True, color='steelblue')
         ax.set_title('Temperature Distribution (Min)')
@@ -397,23 +407,21 @@ elif selected == "Interesting Graphs":
         ax.set_xlim(-30,40)
         st.pyplot(temperature_freq_graph_min)
 
-    #probability of weather type throughout entire year
+    # graph for different info types over the year
     st.subheader("Weather Over the Year")
     weather_graph_year = st.selectbox('Select a Weather Type:', means_for_year_pandas.columns, key = "year_graph_type")
-    # Create a new column 'Day' for day
-    means_for_year_pandas['Day'] = means_for_year_pandas.index.str.split().str[1]
 
-    # Create a new column 'Month' for month
+    # string splitting to create a month column in the means_for_year_pandas dict
     means_for_year_pandas['Month'] = means_for_year_pandas.index.str.split().str[0]
 
-    # Plotting
     weather_probability_graph_year, ax = plt.subplots(figsize=(16,4))
     sns.barplot(data=means_for_year_pandas, x='Month', y=st.session_state["year_graph_type"], hue='Month', palette='viridis')
 
-    # Formatting x-axis labels
-    ax.set_xticks(range(len(months)))  # Set x-ticks for each month
-    ax.set_xticklabels(months)  # Set x-tick labels as month names
+    # setting x axis labels to show as months
+    ax.set_xticks(range(len(months)))  
+    ax.set_xticklabels(months)
 
+    # setting y axis labels
     ax.set_xlabel('Month of the Year')
     ax.set_ylabel(f'{st.session_state["year_graph_type"]}')
     ax.set_title("Weather Over the Year")
