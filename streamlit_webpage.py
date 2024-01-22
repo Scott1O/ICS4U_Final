@@ -62,22 +62,22 @@ means_for_year_pandas = pd.DataFrame(mean_for_year).T
 # code for each navigation option
 if selected == "Home":
     # home page containing basic information about the csv file
-    st.header("climate-daily.csv File Information:")
+    st.header("General Information")
     # converting the weather dataframe into a downloadable csv and creating a download button
     home_header_columns = st.columns(2)
-    with home_header_columns[0]:
+    with home_header_columns[1]:
         st.subheader("Download the CSV File Here:")
         downloadable_csv = convert_df(weather)
         st.download_button(label = "Download climate-daily.csv", data = downloadable_csv)
         st.image("https://climatedata.ca/site/assets/uploads/2019/02/logo-climate-data-ca-1.png", caption = "Climate Data Canada Logo (Source of climate-daily.csv)",
         width = 150)
-    with home_header_columns[1]:
+    with home_header_columns[0]:
         st.subheader("Welcome to the Historical Weather Network")
-        st.write("The Historical Weather Network uses a weather data csv file for a station in Toronto, Onatrio, Canada.")
+        st.write("The Historical Weather Network uses a weather data csv file for a station in Toronto, Onatrio, Canada with over 150 years of data.")
         st.write("The csv data was downloaded from Climate Data Canada from this page: https://climatedata.ca/download/#station-download.")
         st.write("All information presented on this website is based off of historical averages and does not truly predict anything.")
-        st.write("This website is written in python using streamlit with all dataframe operations being done by python. The graphs were "
-        "made using seaborn and plotly.")
+        st.write("This website is written in Python using Streamlit with all dataframe operations being done by Pandas. The graphs were "
+        "made using Seaborn and Matplotlib.")
     
     st.header("Website Summary")
     summary_columns = st.columns(3)
@@ -86,7 +86,7 @@ if selected == "Home":
         st.write("The Daily Weather page relies on historical averages and allows the user to find information on any day of the year. "
         "The page includes a set of weather characteristics for the current day such as minimum temperature and the chance of rain or snow. "
         "Below the weather summary there is one input area that allows the user to find historical averages for a specific category on a specific day "
-        "and another input area that allows the user to find these same historical averages except for the entire month. The daily weather section "
+        "and another input area that allows the user to find these same historical averages for the entire month. The daily weather section "
         "allows the user to find useful information from the dataframe in a more appealing and easier to use format")
     with summary_columns[1]:
         st.subheader("Future Forecast")
@@ -262,8 +262,8 @@ elif selected == "Future Forecast":
     "sorting which means that using columns such as \"MEAN_TEMPERATURE\" with \"SNOW_ON_GROUND\" will not give great results. "
     "I decided to leave the option to sort by these in but it is more recommended to use the rating system which relies less "
     "on exact decimal values and so allows for a more applicable sorting process. The key for what each rating means can be found "
-    "below the graph. Additionally, there is the option to click on a column of the graph to sort by it in ascending or "
-    " descending order. This seems to be built in with streamlit dataframe visualization but it only allows sorting by one column"
+    "below. Additionally, there is the option to click on a column of the graph to sort by it in ascending or "
+    " descending order. This seems to be built in with Streamlit dataframe visualization but it only allows sorting by one column"
     " at a time.")
     st.write("\"Rain Probability %\" is the same as \"TOTAL_RAIN (Probability)\" on the previous page, this goes for the snow and snow on ground columns too. "
     "They simply have different names because the Future Forecast uses a seperate dataframe based on averages for each day instead of the raw full csv file.")
@@ -350,7 +350,7 @@ elif selected == "Interesting Graphs":
     st.pyplot(avg_max_temp_month)
     
     # probability of weather type for each month
-    st.subheader("Weather over a Month")
+    st.subheader("Weather Over a Month")
     # creating select boxes for the user
     weather_graph_month = st.selectbox('Select a Month:', list(calendar.month_name)[1:], key = "month_graph_month")
     month_graph_type = st.selectbox('Select a Weather Type:', means_for_year_pandas.columns, key = "month_graph_type")
